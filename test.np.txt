@@ -1,0 +1,4 @@
+[load libstd.dylib extern_print print]
+[load libstd.dylib extern_file file]
+[load libstd.dylib extern_comment comment]
+[load
