@@ -21,6 +21,7 @@ String* str_copy(String* target, unsigned long from, unsigned long to);
 void str_free(String* input);
 int str_same(String* a, String* b);
 void str_print(String* input);
+// This function will not free input.
 String* str_let(char* input);
 char* str_2char_ptr(String* input);
 // functions with standard form
@@ -34,7 +35,9 @@ String* load(void* root, String* source);
 // Basic neptune type labels
 #define BASIC_TYPE_LIST 1
 #define BASIC_TYPE_STRING 2
-#define BASIC_TYPE_FUNC   3
+#define BASIC_TYPE_FUNC_BIN   3
+#define BASIC_TYPE_FUNC_SRC   4
+#define BAISC_TYPE_NONE_ALLOC  5
 #define BASIC_TYPE_END    0
 void* type_init_list();
 // input must be a list pointer

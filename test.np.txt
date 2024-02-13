@@ -1,4 +1,6 @@
-[load libstd.dylib extern_print print]
-[load libstd.dylib extern_file file]
 [load libstd.dylib extern_comment comment]
-[load
+[load libstd.dylib extern_print print]
+[comment
+    This is a simple interpreter for neptune
+]
+[print #Neptune v0.0.1 interpreter\n]

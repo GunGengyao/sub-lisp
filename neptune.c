@@ -51,6 +51,16 @@ String* str_replace(String* target, unsigned long from, unsigned long to, String
     return (String*)ans;
 }
 String* str_copy(String* target, unsigned long from, unsigned long to){
+    if (from==to) {  // This will copy all string.
+        unsigned long target_len = str_len(target);
+        char* ans = (char*)malloc(sizeof(char)*(target_len+1));
+        unsigned long cursor = 0;
+        for(; target[cursor]!=0; cursor++) {
+            ans[cursor] = target[cursor];
+        }
+        ans[cursor]=0;
+        return ans;
+    }
     unsigned long target_len = str_len(target);
     char* ans = (char*)malloc(sizeof(char)*(target_len+1));
     unsigned long tar_cursor = from;
@@ -86,7 +96,8 @@ String* str_let(char* input){
     for(; input[input_len]!=0; input_len++);
     String* ans = (String*)malloc(sizeof(char)*(input_len+1));
     unsigned long i=0;
-    for(i=0; input[input_len]!=0; input_len++){
+    input_len=0;
+    for(; input[input_len]!=0; input_len++, i++){
         ans[i] = input[i];
     }
     ans[i]=0;
@@ -105,7 +116,7 @@ void* type_init_list(){
 unsigned long type_list_len(void* input){
     unsigned long ans=0;
     void** new_input = (void**)input;
-    for(; new_input[2*ans]!=BASIC_TYPE_END; ans++);
+    for(; new_input[2*ans+1]!=BASIC_TYPE_END; ans++);
     return ans*2;
 }
 // deep usually be 0
@@ -121,8 +132,11 @@ void type_print(void* input, long recur_times, long deep){
             case BASIC_TYPE_LIST:{
                 type_print(((void**)input)[2*cursor], recur_times-1, deep+1);
             }
-            case BASIC_TYPE_FUNC:{
+            case BASIC_TYPE_FUNC_BIN:{
                 printf("<FUNC_AT:0x%x>\n", ((void**)input)[2*cursor]);
+            }
+            case BASIC_TYPE_FUNC_SRC: {
+                printf("<SOURCE>\n");
             }
             case BASIC_TYPE_END:{
                 return;
@@ -145,8 +159,12 @@ void type_free(void* input) {
             case BASIC_TYPE_LIST: {
                 type_free(current_ptr);
             }
-            case BASIC_TYPE_FUNC: {
+            case BASIC_TYPE_FUNC_BIN: {
+                dlclose(current_ptr);
                 return;
+            }
+            case BASIC_TYPE_FUNC_SRC: {
+                str_free(current_ptr);
             }
             case BASIC_TYPE_END: {
                 return;
@@ -156,20 +174,29 @@ void type_free(void* input) {
             }
         }
     }
+    return;
 }
 // ----------------------------------------------------------- neptune.h ------------------------------------}
 
-Func _match_function(void* root, String* function_name){
+// function_name should be freed
+Func _match_function(void* root, String* function_name) {
     Func ans;    // WATCH OUT!!!
-    void** root_tmp = (void**)root;
-    root = *root_tmp;
-    void* function_list = ((void**)root)[0];
-    unsigned long cur = 0;
-    for(; ((void***)function_list)[cur][0]!=0; cur++){
-        if (str_same(((void***)function_list)[cur][0], function_name)==TRUE){
-            return ((Func**)function_list)[cur][1];
+    void** function_list = ((void**)root)[0];
+    unsigned long cursor = 0;
+    for(; function_list[cursor*2+1]!=BASIC_TYPE_END; cursor++) {
+        if((unsigned long)(function_list[cursor*2+1])==BASIC_TYPE_FUNC_BIN) {
+            String* current_name = ((String**)function_list)[cursor*2+4];
+            if(str_same(current_name, function_name)==TRUE) {
+                char* function_name_symbol = str_2char_ptr(str_copy(((void**)function_list)[cursor*2+2], 0, 0));
+                ans =(Func)dlsym(function_list[cursor*2], function_name_symbol);
+                free(function_name_symbol);
+                return ans;
+            }
         }
     }
+    // Handle situation that not matched any function!!!
+
+    str_free(function_name);
     return ans;
 }
 
@@ -232,49 +259,7 @@ String* exec(void* root, String* source){
     function_body_start = function_name_end;
     function_body_end = str_len(source);
     String* name_tmp = str_copy(source, function_name_start, function_name_end);
-    return _match_function(root, name_tmp)(root, str_copy(source, function_body_start, function_body_end));
-}
-String* load(void* root, String* source){
-    String* ans = str_let("");
-    unsigned long cursor = 0;
-    for(;str_get(source,cursor)==unicode(' '); cursor++);
-    // Read library path.
-    unsigned long path_start = cursor;
-    unsigned long path_end   = 0;
-    for(;str_get(source, cursor)!=unicode(' '); cursor++);
-    path_end = cursor;
-    String* path = str_copy(source, path_start, path_end);
-    unsigned long func_name_start = 0;
-    unsigned long func_name_end   = 0;
-    for(; str_get(source, cursor)==unicode(' '); cursor++);
-    func_name_start = cursor;
-    for(; str_get(source, cursor)!=unicode(' '); cursor++);
-    func_name_end = cursor;
-    String* function_name = str_copy(source, func_name_start, func_name_end);
-    unsigned long as_start = 0;
-    unsigned long as_end   = 0;
-    for(; str_get(source, cursor)==unicode(' '); cursor++);
-    as_start = cursor;
-    for(; str_get(source, cursor)!=unicode(' ')&&str_get(source, cursor)!=unicode('\0'); cursor++);
-    as_end = cursor;
-    String* as_name = str_copy(source, as_start, as_end);
-    // Here we have path, function_name, as_name.
-    // load function name
-    char* path_char_ptr = str_2char_ptr(path);
-    char* function_name_char_ptr = str_2char_ptr(function_name);
-    void* function_handle = dlopen(path_char_ptr, RTLD_LAZY);
-    void* function_ptr = dlsym(function_handle, function_name_char_ptr);
-    // TODO
-    free(function_name_char_ptr);
-    str_free(as_name);
-    free(path_char_ptr);
-    str_free(source);
-    dlclose(function_handle);
-    return ans;
-}
-String* print(void* root, String* source){
-    String* ans = str_let("");
-    str_print(source);
-    return ans;
+    Func function_ptr = _match_function(root, name_tmp);
+    return function_ptr(root, str_copy(source, function_body_start, function_body_end));
 }
 //-------------------------------------------------------------- here the function should all have standard form ---- }
