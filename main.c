@@ -13,7 +13,10 @@ int main() {
     str_free(tmp);
     // init root.
     void* load_handle = dlopen("libstd.dylib", RTLD_LAZY);
-    void* root = type_init_list();
+    void* root = (void*)malloc(sizeof(void*)*4);
+    ((void**)root)[1] = BASIC_TYPE_LIST;
+    ((void**)root)[2] = BASIC_TYPE_END;
+    ((void**)root)[3] = BASIC_TYPE_END;
     ((void**)root)[0] = malloc(sizeof(void*)*8);
     ((void***)root)[0][0] = load_handle;
     ((void***)root)[0][1] = BASIC_TYPE_FUNC_BIN;

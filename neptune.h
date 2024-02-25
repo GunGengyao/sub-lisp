@@ -24,6 +24,10 @@ void str_print(String* input);
 // This function will not free input.
 String* str_let(char* input);
 char* str_2char_ptr(String* input);
+
+int is_valid_open(String* source, unsigned long where);
+int is_valid_close(String* source, unsigned long where);
+int is_valid_function(String* source, unsigned long where);
 // functions with standard form
 /*
  * standard functions MUST free source and allocate new
@@ -37,12 +41,11 @@ String* load(void* root, String* source);
 #define BASIC_TYPE_STRING 2
 #define BASIC_TYPE_FUNC_BIN   3
 #define BASIC_TYPE_FUNC_SRC   4
-#define BAISC_TYPE_NONE_ALLOC  5
+#define BASIC_TYPE_NONE_ALLOC  5
 #define BASIC_TYPE_END    0
 void* type_init_list();
 // input must be a list pointer
 unsigned long type_list_len(void* input);
-void type_print(void* input, long recur_times, long deep);
 void type_free(void* input);
 #define NEPTUNE_H
 #endif

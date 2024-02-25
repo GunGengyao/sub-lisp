@@ -119,35 +119,6 @@ unsigned long type_list_len(void* input){
     for(; new_input[2*ans+1]!=BASIC_TYPE_END; ans++);
     return ans*2;
 }
-// deep usually be 0
-void type_print(void* input, long recur_times, long deep){
-    unsigned long cursor = 0;
-    for(; ((void**)input)[2*cursor+1]!=BASIC_TYPE_END; cursor++){
-        for(; deep!=0; deep--)printf("    ");
-        switch((int)(((void**)input)[2*cursor+1])){
-            case BASIC_TYPE_STRING:{
-                str_print(((void**)input)[2*cursor]);
-                printf("\n");
-            }
-            case BASIC_TYPE_LIST:{
-                type_print(((void**)input)[2*cursor], recur_times-1, deep+1);
-            }
-            case BASIC_TYPE_FUNC_BIN:{
-                printf("<FUNC_AT:0x%x>\n", ((void**)input)[2*cursor]);
-            }
-            case BASIC_TYPE_FUNC_SRC: {
-                printf("<SOURCE>\n");
-            }
-            case BASIC_TYPE_END:{
-                return;
-            }
-            default:{
-                // TODO: can't reach here.
-            }
-        }
-    }
-    return;
-}
 void type_free(void* input) {
     unsigned long cursor = 0;
     for(; ((void**)input)[cursor*2+1]!=BASIC_TYPE_END; cursor++) {
@@ -200,20 +171,20 @@ Func _match_function(void* root, String* function_name) {
     return ans;
 }
 
-int is_vaild_open(String* source, unsigned long where){
+int is_valid_open(String* source, unsigned long where){
     if (str_get(source, where)!=unicode('['))return FALSE;
     if (where==0)return TRUE;
     if (str_get(source,where)==unicode('\\'))return FALSE;
     return TRUE;
 }
-int is_vaild_close(String* source, unsigned long where){
+int is_valid_close(String* source, unsigned long where){
     if (str_get(source, where)!=unicode(']'))return FALSE;
     if (where==0)return TRUE;
     if (str_get(source, where)==unicode('\\'))return FALSE;
     return TRUE;
 }
-int is_vaild_function(String* source, unsigned long where){
-    if (is_vaild_open(source, where)==FALSE)return FALSE;
+int is_valid_function(String* source, unsigned long where){
+    if (is_valid_open(source, where)==FALSE)return FALSE;
     if (where==0)return TRUE;
     if (str_get(source, where-1)!=unicode('\''))return TRUE;
     return FALSE;
@@ -222,16 +193,17 @@ int is_vaild_function(String* source, unsigned long where){
 // This function will free source and alloc new space as return
 String* exec(void* root, String* source){
     unsigned long cursor = 0;
+    // Here is going to unfold function
     for(; str_get(source, cursor)!=unicode('\0');){
-        if (is_vaild_function(source, cursor)==TRUE){
+        if (is_valid_function(source, cursor)==TRUE){
             // get function_start and function_end;
             unsigned long function_start, function_end;
             function_start = cursor;
             cursor++;
             int layer = 1;
             for(; layer!=0; cursor++){
-                if (is_vaild_open(source, cursor)==TRUE)layer++;
-                if (is_vaild_close(source, cursor)==TRUE)layer--;
+                if (is_valid_open(source, cursor)==TRUE)layer++;
+                if (is_valid_close(source, cursor)==TRUE)layer--;
             }
             function_end = cursor;
             source = str_replace(
@@ -243,6 +215,16 @@ String* exec(void* root, String* source){
                 )
             );
             cursor = function_start;
+        }else if(is_valid_open(source, cursor)==TRUE){
+            // here is going to skip '[]
+            cursor++;
+            int layer = 1;
+            for(; layer!=0; cursor++){
+                if(is_valid_open(source, cursor)==TRUE)
+                    layer++;
+                if(is_valid_close(source, cursor)==TRUE)
+                    layer--;
+            }
         }else{
             cursor++;
         }
@@ -253,13 +235,15 @@ String* exec(void* root, String* source){
     for(; str_get(source, cursor)==unicode(' '); cursor++);
     function_name_start = cursor;
     if(str_get(source, cursor)==unicode('\0'))return source;
-    for(; str_get(source, cursor)!=unicode(' '); cursor++);
+    for(; str_get(source, cursor)!=unicode(' ')&& str_get(source,cursor)!= unicode('\0'); cursor++);
     function_name_end = cursor;
     unsigned long function_body_start, function_body_end;
     function_body_start = function_name_end;
     function_body_end = str_len(source);
     String* name_tmp = str_copy(source, function_name_start, function_name_end);
     Func function_ptr = _match_function(root, name_tmp);
-    return function_ptr(root, str_copy(source, function_body_start, function_body_end));
+    String* ans = function_ptr(root, str_copy(source, function_body_start, function_body_end));
+    str_free(source);  // source freed here.
+    return ans;
 }
 //-------------------------------------------------------------- here the function should all have standard form ---- }
