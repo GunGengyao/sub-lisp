@@ -1,11 +1,8 @@
-//
-// Created by 仇庚垚 on 2024/2/12.
-//
+
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
-// ------------------------------------------------------ neptune.h -----------------------------{
 #include "neptune.h"
 String* read_file_as_string(char* path){
     FILE *fp = fopen(path, "r");
@@ -107,68 +104,16 @@ String* str_let(char* input){
 char* str_2char_ptr(String* input){
     return (char*)input;
 }
-void* type_init_list(){
-    void** ans = malloc(sizeof(void*)*2);
-    ans[0] = BASIC_TYPE_END;
-    ans[1] = BASIC_TYPE_END;
-    return ans;
-}
-unsigned long type_list_len(void* input){
-    unsigned long ans=0;
-    void** new_input = (void**)input;
-    for(; new_input[2*ans+1]!=BASIC_TYPE_END; ans++);
-    return ans*2;
-}
-void type_free(void* input) {
-    unsigned long cursor = 0;
-    for(; ((void**)input)[cursor*2+1]!=BASIC_TYPE_END; cursor++) {
-        void* current_ptr = ((void**)input)[cursor*2];
-        switch((int)((void**)input)[cursor*2+1]) {
-            case BASIC_TYPE_STRING: {
-                str_free((String*)current_ptr);
+// function_name will be freed
+Func _match_function(Var* root, String* function_name) {
+    Var current_var = *root;
+    while(current_var.next_node!=VAR_TYPE_END){
+        if(current_var.type==VAR_TYPE_FUNCTION)
+            if(str_same(current_var.name, function_name)==TRUE){
+                return ((Func)current_var.ptr);
             }
-            case BASIC_TYPE_LIST: {
-                type_free(current_ptr);
-            }
-            case BASIC_TYPE_FUNC_BIN: {
-                dlclose(current_ptr);
-                return;
-            }
-            case BASIC_TYPE_FUNC_SRC: {
-                str_free(current_ptr);
-            }
-            case BASIC_TYPE_END: {
-                return;
-            }
-            default: {
-                // TODO: can't reach here.
-            }
-        }
+        current_var = *current_var.next_node;
     }
-    return;
-}
-// ----------------------------------------------------------- neptune.h ------------------------------------}
-
-// function_name should be freed
-Func _match_function(void* root, String* function_name) {
-    Func ans;    // WATCH OUT!!!
-    void** function_list = ((void**)root)[0];
-    unsigned long cursor = 0;
-    for(; function_list[cursor*2+1]!=BASIC_TYPE_END; cursor++) {
-        if((unsigned long)(function_list[cursor*2+1])==BASIC_TYPE_FUNC_BIN) {
-            String* current_name = ((String**)function_list)[cursor*2+4];
-            if(str_same(current_name, function_name)==TRUE) {
-                char* function_name_symbol = str_2char_ptr(str_copy(((void**)function_list)[cursor*2+2], 0, 0));
-                ans =(Func)dlsym(function_list[cursor*2], function_name_symbol);
-                free(function_name_symbol);
-                return ans;
-            }
-        }
-    }
-    // Handle situation that not matched any function!!!
-
-    str_free(function_name);
-    return ans;
 }
 
 int is_valid_open(String* source, unsigned long where){
@@ -189,9 +134,36 @@ int is_valid_function(String* source, unsigned long where){
     if (str_get(source, where-1)!=unicode('\''))return TRUE;
     return FALSE;
 }
+// return new head of chain/stack
+Var* var_push(Var* target, Var* input){
+    if (input->next_node!=VAR_TYPE_END){
+        printf("var_push: ERROR, input already has some nodes attached\n");
+        // TODO
+    }
+    input->next_node = target;
+    target->last_node = input;
+    return input;
+}
+// WARNING: make sure you have already got the head of stack
+// before using this function, this will detach the head node
+// with stack!!!
+// Return new head of stack.
+Var* var_pop(Var* target){
+    target->next_node->last_node = VAR_TYPE_END;
+    return target->next_node;
+}
+Var* var_init(String* name, void* ptr, Var* next_node, Var* last_node, int type){
+    Var* ans = (Var*)malloc(sizeof(Var)*1);
+    ans->name = name;
+    ans->ptr = ptr;
+    ans->next_node = next_node;
+    ans->last_node = last_node;
+    ans->type = type;
+    return ans;
+}
 // ---------------------------------------------------------------- here the all function should have standard form ---- {
 // This function will free source and alloc new space as return
-String* exec(void* root, String* source){
+String* exec(Var** root, String* source){
     unsigned long cursor = 0;
     // Here is going to unfold function
     for(; str_get(source, cursor)!=unicode('\0');){
@@ -241,7 +213,7 @@ String* exec(void* root, String* source){
     function_body_start = function_name_end;
     function_body_end = str_len(source);
     String* name_tmp = str_copy(source, function_name_start, function_name_end);
-    Func function_ptr = _match_function(root, name_tmp);
+    Func function_ptr = _match_function(*root, name_tmp);
     String* ans = function_ptr(root, str_copy(source, function_body_start, function_body_end));
     str_free(source);  // source freed here.
     return ans;

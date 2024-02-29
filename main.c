@@ -13,20 +13,18 @@ int main() {
     str_free(tmp);
     // init root.
     void* load_handle = dlopen("libstd.dylib", RTLD_LAZY);
-    void* root = (void*)malloc(sizeof(void*)*4);
-    ((void**)root)[1] = BASIC_TYPE_LIST;
-    ((void**)root)[2] = BASIC_TYPE_END;
-    ((void**)root)[3] = BASIC_TYPE_END;
-    ((void**)root)[0] = malloc(sizeof(void*)*8);
-    ((void***)root)[0][0] = load_handle;
-    ((void***)root)[0][1] = BASIC_TYPE_FUNC_BIN;
-    ((void***)root)[0][2] = str_let("load");
-    ((void***)root)[0][3] = BASIC_TYPE_STRING;
-    ((void***)root)[0][4] = str_let("load");
-    ((void***)root)[0][5] = BASIC_TYPE_STRING;
-    ((void***)root)[0][6] = 0;//This value is not necessary.
-    ((void***)root)[0][7] = BASIC_TYPE_END;
-    source = exec(root, source);
+    Var* root = var_init(str_let("std_functions_handle"),
+                        load_handle,
+                        VAR_TYPE_END,
+                        VAR_TYPE_END,
+                        VAR_TYPE_FUNCTION_HANDLE);
+    Var* load_func = var_init(str_let("load"),
+                             dlsym(load_handle, "load"),
+                             VAR_TYPE_END,
+                             VAR_TYPE_END,
+                             VAR_TYPE_FUNCTION);
+    root = var_push(root, load_func);
+    source = exec(&root, source);
     str_free(source);
     dlclose(load_handle);
     return 0;

@@ -1,6 +1,4 @@
-//
-// Created by 仇庚垚 on 2024/2/12.
-//
+
 
 // This file is all std functions will be loaded in environment.
 #include "neptune.h"
@@ -26,51 +24,56 @@ void* _my_realloc(void* target, unsigned long current_size, unsigned long new_si
  *  [function current name:string]45
  *  ...
  */
-String* load(void* root, String* source){
-    String* ans = str_let("");
+String* load(Var** root, String* source){
     unsigned long cursor = 0;
-    for(;str_get(source,cursor)==unicode(' '); cursor++);
-    // Read library path.
-    unsigned long path_start = cursor;
-    unsigned long path_end   = 0;
-    for(;str_get(source, cursor)!=unicode(' '); cursor++);
-    path_end = cursor;
-    String* path = str_copy(source, path_start, path_end);
-    unsigned long func_name_start = 0;
-    unsigned long func_name_end   = 0;
+    unsigned long handle_start = 0;
+    unsigned long handle_end = 0;
+    unsigned long symbol_start = 0;
+    unsigned long symbol_end = 0;
+    unsigned long var_name_start = 0;
+    unsigned long var_name_end = 0;
+    // Skip blanks
     for(; str_get(source, cursor)==unicode(' '); cursor++);
-    func_name_start = cursor;
+    handle_start = cursor;
     for(; str_get(source, cursor)!=unicode(' '); cursor++);
-    func_name_end = cursor;
-    String* function_name = str_copy(source, func_name_start, func_name_end);
-    unsigned long as_start = 0;
-    unsigned long as_end   = 0;
+    handle_end = cursor;
     for(; str_get(source, cursor)==unicode(' '); cursor++);
-    as_start = cursor;
-    for(; str_get(source, cursor)!=unicode(' ')&&str_get(source, cursor)!=unicode('\0'); cursor++);
-    as_end = cursor;
-    String* as_name = str_copy(source, as_start, as_end);
-    // Here we have path, function_name, as_name.
-    char* path_char_ptr = str_2char_ptr(path);
-    void* function_handle = dlopen(path_char_ptr, RTLD_LAZY);
-    // Append new function at function list end
-    unsigned long function_list_len=0;
-    for(; ((void***)root)[0][function_list_len*2+1]!=BASIC_TYPE_END; function_list_len++);
-    ((void***)root)[0] = _my_realloc(((void**)root)[0],function_list_len*2+1+1 ,function_list_len*2+1+1+6);
-    ((void***)root)[0][function_list_len*2+1+6] = BASIC_TYPE_END;
-    ((void***)root)[0][function_list_len*2+0] = function_handle;
-    ((void***)root)[0][function_list_len*2+1] = BASIC_TYPE_FUNC_BIN;
-    ((void***)root)[0][function_list_len*2+2] = function_name;
-    ((void***)root)[0][function_list_len*2+3] = BASIC_TYPE_STRING;
-    ((void***)root)[0][function_list_len*2+4] = as_name;
-    ((void***)root)[0][function_list_len*2+5] = BASIC_TYPE_STRING;
-    free(path_char_ptr);
+    symbol_start = cursor;
+    for(; str_get(source, cursor)!=unicode(' '); cursor++);
+    symbol_end = cursor;
+    for(; str_get(source, cursor)==unicode(' '); cursor++);
+    var_name_start = cursor;
+    for(; str_get(source, cursor)!=unicode(' ')
+        &&str_get(source, cursor)!=unicode('\0'); cursor++);
+    var_name_end = cursor;
+    // Here we have handle_start handle_end symbol_start symbol_end var_name_start var_name_end
+    String* handle_name = str_copy(source, handle_start, handle_end);
+    String* symbol_name = str_copy(source, symbol_start, symbol_end);
+    String* var_name = str_copy(source, var_name_start, var_name_end);
+    Var* current_var = *root;
+    void* handle = NULL;
+    while(current_var!=VAR_TYPE_END){
+        if(current_var->type == VAR_TYPE_FUNCTION_HANDLE)
+            if(str_same(current_var->name, handle_name)==TRUE)
+                handle = current_var->ptr;
+        current_var = current_var->next_node;
+    }
+    // TODO: need some operation to process undetected var name situation.
+    char* symbol_name_char = str_2char_ptr(symbol_name);
+    Func function_ptr = dlsym(handle, symbol_name_char);
+    str_free(handle_name);
+    Var* new_var = var_init(var_name,
+                            function_ptr,
+                            VAR_TYPE_END,
+                            VAR_TYPE_END,
+                            VAR_TYPE_FUNCTION);
+    *root = var_push(*root, new_var);
     str_free(source);
-    return ans;
+    return str_let("");
 }
 // TODO: this function currently only hold ascii
 // Now it supports some escape charaters.
-String* extern_print(void* root, String* source) {
+String* extern_print(Var** root, String* source) {
     String* ans = str_let("");
     // delete the first block in source;
     unsigned long cursor = 0;
@@ -97,55 +100,18 @@ String* extern_print(void* root, String* source) {
     str_free(source);
     return ans;
 }
-// current_layer must be 0 at first time using.
-void _extern_ls_tree(void* root, unsigned long current_layer, unsigned long total_depth){
-    unsigned long cursor = 0;
-    for(; ((void**)root)[cursor*2+1]!=BASIC_TYPE_END; cursor++){
-        for(unsigned int i=0; i!=current_layer; i++)printf("    ");
-        if(((void**)root)[cursor*2+1]==BASIC_TYPE_LIST){
-            printf("<LIST_AT 0x%lx>", ((unsigned long*)root)[cursor*2]);
-            printf("\n");
-            _extern_ls_tree(((void**)root)[cursor*2], current_layer+1, total_depth);
-        }else
-        if(((void**)root)[cursor*2+1]==BASIC_TYPE_STRING){
-            printf("\"");
-            str_print(((void**)root)[cursor*2]);
-            printf("\"\n");
-        }else
-        if(((void**)root)[cursor*2+1]==BASIC_TYPE_FUNC_SRC){
-            printf("<SRC_FUNC_AT 0x%lx>", ((unsigned long*)root)[cursor*2]);
-            printf("\n");
-        }else
-        if(((void**)root)[cursor*2+1]==BASIC_TYPE_FUNC_BIN){
-            printf("<BIN_FUNC_AT 0x%lx>", ((unsigned long*)root)[cursor*2]);
-            printf("\n");
-        }else
-        if(((void**)root)[cursor*2+1]==BASIC_TYPE_NONE_ALLOC){
-            printf("<NONE_ALLOC>");
-            printf("\n");
-        }else{
-            // TODO
-        }
-    }
-    return;
-}
-// This function can show the struct of root.
-String* extern_ls(void* root, String* source) {
-    _extern_ls_tree(root, 0, 100);
-    str_free(source);
-    return str_let("");
-}
-String* extern_file(void* root, String* source) {
+
+String* extern_file(Var** root, String* source) {
     // TODO
     str_free(source);
     return str_let("");
 }
-String* extern_comment(void* root, String* source) {
+String* extern_comment(Var** root, String* source) {
     String* ans = str_let("");
     str_free(source);
     return ans;
 }
-String* extern_if(void* root, String* source) {
+String* extern_if(Var** root, String* source) {
     unsigned long cursor = 0;
     for(; str_get(source, cursor)==unicode(' '); cursor++);
     if(str_get(source, cursor)==unicode('T')){
@@ -175,7 +141,7 @@ String* extern_if(void* root, String* source) {
     // Unreachable
     return source;
 }
-String* extern_while(void* root, String* source) {
+String* extern_while(Var** root, String* source) {
     unsigned long cursor = 0;
     unsigned long condition_start = 0;
     unsigned long condition_end = 0;
@@ -224,7 +190,7 @@ String* extern_while(void* root, String* source) {
     str_free(source);
     return source;
 }
-String* extern_add(void* root, String* source) {
+String* extern_add(Var** root, String* source) {
     // check input type.
     unsigned long cursor = 0;
     for(; str_get(source, cursor)==unicode(' '); cursor++);
@@ -285,7 +251,7 @@ String* extern_add(void* root, String* source) {
     // Unreachable
     return str_let("");
 }
-String* extern_sub(void* root, String* source) {
+String* extern_sub(Var** root, String* source) {
     unsigned long cursor = 0;
     for(; str_get(source, cursor)== unicode(' '); cursor++);
     short is_input_a_double=0, is_input_b_double=0;
@@ -340,7 +306,7 @@ String* extern_sub(void* root, String* source) {
     free(char_source);
     return str_let("");
 }
-String* extern_mul(void* root, String* source) {
+String* extern_mul(Var** root, String* source) {
     unsigned long cursor=0;
     short is_input_a_double=0, is_input_b_double=0;
     for(; str_get(source, cursor)== unicode(' '); cursor++);
@@ -396,7 +362,7 @@ String* extern_mul(void* root, String* source) {
     free(char_source);
     return source;
 }
-String* extern_div(void* root, String* source) {
+String* extern_div(Var** root, String* source) {
     unsigned long cursor = 0;
     short is_input_a_double=0, is_input_b_double=0;
     for(; str_get(source, cursor)==unicode(' '); cursor++);
@@ -451,7 +417,7 @@ String* extern_div(void* root, String* source) {
     free(char_source);
     return str_let("");
 }
-String* extern_and(void* root, String* source){
+String* extern_and(Var** root, String* source){
     unsigned long cursor = 0;
     short input_a=0, input_b=0;
     for(; str_get(source, cursor)==unicode(' '); cursor++);
@@ -467,7 +433,7 @@ String* extern_and(void* root, String* source){
     str_free(source);
     return str_let("");
 }
-String* extern_or(void* root, String* source){
+String* extern_or(Var** root, String* source){
     unsigned long cursor=0;
     short input_a=0, input_b=0;
     for(; str_get(source, cursor)==unicode(' '); cursor++);
@@ -483,7 +449,7 @@ String* extern_or(void* root, String* source){
     str_free(source);
     return str_let("");
 }
-String* extern_not(void* root, String* source){
+String* extern_not(Var** root, String* source){
     unsigned long cursor=0;
     short input=0;
     for(; str_get(source, cursor)==unicode(' '); cursor++);
@@ -495,7 +461,7 @@ String* extern_not(void* root, String* source){
     str_free(source);
     return str_let("");
 }
-String* extern_equal(void* root, String* source){
+String* extern_equal(Var** root, String* source){
     unsigned long cursor=0;
     short is_input_a_double=0, is_input_b_double=0;
     for(; str_get(source, cursor)==unicode(' '); cursor++);
@@ -554,7 +520,7 @@ String* extern_equal(void* root, String* source){
     return str_let("");
 }
 // This handle >= operator.
-String* extern_ge(void* root, String* source){
+String* extern_ge(Var** root, String* source){
     unsigned long cursor=0;
     short is_input_a_double = 0;
     short is_input_b_double = 0;
@@ -610,7 +576,7 @@ String* extern_ge(void* root, String* source){
     free(char_source);
     return str_let("");
 }
-String* extern_le(void* root, String* source){
+String* extern_le(Var** root, String* source){
     unsigned long cursor=0;
     short is_input_a_double = 0;
     short is_input_b_double = 0;
@@ -666,7 +632,7 @@ String* extern_le(void* root, String* source){
     str_free(source);
     return str_let("");
 }
-String* extern_lar(void* root, String* source){
+String* extern_lar(Var** root, String* source){
     unsigned long cursor=0;
     short is_input_a_double = 0;
     short is_input_b_double = 0;
@@ -722,7 +688,7 @@ String* extern_lar(void* root, String* source){
     str_free(source);
     return str_let("");
 }
-String* extern_les(void* root, String* source){
+String* extern_les(Var** root, String* source){
     unsigned long cursor=0;
     short is_input_a_double = 0;
     short is_input_b_double = 0;
@@ -778,12 +744,60 @@ String* extern_les(void* root, String* source){
     str_free(source);
     return str_let("");
 }
-String* extern_echo(void* root, String* source){
+String* extern_echo(Var** root, String* source){
     return source;
 }
-String* extern_input(void* root, String* source){
-    // TODO
+String* extern_input(Var** root, String* source){
+    String* input_string = str_let("");
+
+    str_free(source);
+    return str_let("");
 }
-String* extern_var(void* root, String* source){
+// This function will set and assign a new var(string) or assign an existed var(string).
+String* extern_new(Var** root, String* source){
+    unsigned long var_name_start = 0;
+    unsigned long var_name_end = 0;
+    unsigned long value_start = 0;
+    unsigned long value_end = 0;
+    unsigned long cursor = 0;
+    for(; str_get(source, cursor)==unicode(' '); cursor++);
+    var_name_start = cursor;
+    for(; str_get(source, cursor)!=unicode(' '); cursor++);
+    var_name_end = cursor;
+    int layer = 1;
+    cursor+=2;    // Skip '[
+    value_start = cursor;
+    while(layer!=0){
+        if(is_valid_open(source, cursor)==TRUE)layer++;
+        if(is_valid_close(source, cursor)==TRUE)layer--;
+        cursor++;
+    }
+    value_end = cursor-1;
+    String* var_name = str_copy(source, var_name_start, var_name_end);
+    String* value = str_copy(source, value_start, value_end);
+    str_free(source);
+    // Here we have var_name and value
+    // Check if there already have such value
+    Var* current_var = *root;
+    while(!(current_var==VAR_TYPE_END
+            ||current_var->type==VAR_TYPE_LAYER_BOUNDARY
+            || str_same(current_var->name, var_name)==TRUE)){
+        current_var = current_var->next_node;
+    }
+    if(current_var==VAR_TYPE_END||current_var->type==VAR_TYPE_LAYER_BOUNDARY){
+        Var* new_var = var_init(var_name,
+                                value,
+                                VAR_TYPE_END,
+                                VAR_TYPE_END,
+                                VAR_TYPE_STRING);
+        *root = var_push(*root, new_var);
+    }else if(str_same(current_var->name, var_name)==TRUE){
+
+    }
+    return str_let("");
+}
+String* extern_let(Var** root, String* source){
     // TODO
+    str_free(source);
+    return str_let("");
 }
