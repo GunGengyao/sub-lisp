@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.27)
-project(neptune C)
+project(sublisp C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(neptune main.c neptune.c
-        neptune.h)
+add_executable(sublisp main.c sublisp.c
+        sublisp.h)
 
-add_library(std SHARED neptune.h neptune.c std.c)
+add_library(std SHARED sublisp.h sublisp.c std.c)
 
 configure_file(test.np.txt test.np)

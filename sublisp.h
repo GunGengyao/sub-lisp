@@ -28,12 +28,9 @@ Var* var_push(Var* target, Var* input);
 Var* var_pop(Var* target);
 // This function will allocate a new space.
 Var* var_init(String* name, void* ptr, Var* next_node, Var* last_node, int type);
-void var_free_string(Var* input);
-void var_free_function(Var* input);
-void var_free_function_handle(Var* input);
-void var_free_layer_boundary(Var* input);
-void var_free_var_stack(Var* input);
-void var_assignment(Var* target, )
+void var_free(Var* input);
+
+
 typedef String* (*Func)(Var**, String*);    // Standard function pointer.
 
 String* read_file_as_string(char* path);

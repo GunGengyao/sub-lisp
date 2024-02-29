@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
-#include "neptune.h"
+#include "sublisp.h"
 String* read_file_as_string(char* path){
     FILE *fp = fopen(path, "r");
     int fileSize, k;
@@ -161,6 +161,45 @@ Var* var_init(String* name, void* ptr, Var* next_node, Var* last_node, int type)
     ans->type = type;
     return ans;
 }
+// This function will free the node and keep continuous
+void var_free(Var* input){
+    // Unlink the node
+    if(input->next_node!=VAR_TYPE_END)
+        input->next_node->last_node = input->last_node;
+    if(input->last_node!=VAR_TYPE_END)
+        input->last_node->next_node = input->next_node;
+    // Delete this node
+    str_free(input->name);
+    switch(input->type){
+        case VAR_TYPE_STRING:{
+            str_free(input->ptr);
+            goto out;
+        }
+        case VAR_TYPE_VAR_STACK:{
+            Var* current_node=input->ptr;
+            while(current_node!=VAR_TYPE_END){
+                Var* next_node = current_node->next_node;
+                var_free(current_node);
+                current_node = next_node;
+            }
+            goto out;
+        }
+        case VAR_TYPE_FUNCTION:{
+            goto out;
+        }
+        case VAR_TYPE_FUNCTION_HANDLE:{
+            dlclose(input->ptr);
+            goto out;
+        }
+        case VAR_TYPE_LAYER_BOUNDARY:{
+            goto out;
+        }
+    }
+    out:
+    free(input);
+    return;
+}
+
 // ---------------------------------------------------------------- here the all function should have standard form ---- {
 // This function will free source and alloc new space as return
 String* exec(Var** root, String* source){

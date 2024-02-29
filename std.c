@@ -1,7 +1,7 @@
 
 
 // This file is all std functions will be loaded in environment.
-#include "neptune.h"
+#include "sublisp.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
@@ -764,6 +764,7 @@ String* extern_new(Var** root, String* source){
     var_name_start = cursor;
     for(; str_get(source, cursor)!=unicode(' '); cursor++);
     var_name_end = cursor;
+    for(; str_get(source, cursor)==unicode(' '); cursor++);
     int layer = 1;
     cursor+=2;    // Skip '[
     value_start = cursor;
@@ -775,6 +776,11 @@ String* extern_new(Var** root, String* source){
     value_end = cursor-1;
     String* var_name = str_copy(source, var_name_start, var_name_end);
     String* value = str_copy(source, value_start, value_end);
+    Var* new_var = var_init(var_name,
+                            value,
+                            VAR_TYPE_END,
+                            VAR_TYPE_END,
+                            VAR_TYPE_STRING);
     str_free(source);
     // Here we have var_name and value
     // Check if there already have such value
@@ -785,14 +791,18 @@ String* extern_new(Var** root, String* source){
         current_var = current_var->next_node;
     }
     if(current_var==VAR_TYPE_END||current_var->type==VAR_TYPE_LAYER_BOUNDARY){
-        Var* new_var = var_init(var_name,
-                                value,
-                                VAR_TYPE_END,
-                                VAR_TYPE_END,
-                                VAR_TYPE_STRING);
+        // can't find var name -- push in a new function
         *root = var_push(*root, new_var);
     }else if(str_same(current_var->name, var_name)==TRUE){
-
+        if(current_var->next_node!=VAR_TYPE_END){
+            current_var->next_node->last_node = new_var;
+            new_var->next_node = current_var->next_node;
+        }
+        if(current_var->last_node!=VAR_TYPE_END){
+            current_var->last_node->next_node = new_var;
+            new_var->last_node = current_var->last_node;
+        }
+        var_free(current_var);
     }
     return str_let("");
 }

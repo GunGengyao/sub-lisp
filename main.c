@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
-#include "neptune.h"
+#include "sublisp.h"
 int main() {
     String* source = read_file_as_string("test.np");
     // pretreatment
@@ -26,6 +26,6 @@ int main() {
     root = var_push(root, load_func);
     source = exec(&root, source);
     str_free(source);
-    dlclose(load_handle);
+    var_free(root);
     return 0;
 }

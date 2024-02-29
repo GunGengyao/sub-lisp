@@ -3,7 +3,7 @@
 [load std_functions_handle extern_if if]
 [load std_functions_handle extern_while while]
 [load std_functions_handle extern_input input]
-
+[load std_functions_handle extern_new new]
 [comment
     this is a simple sub-lisp interpreter.
 ]
@@ -13,3 +13,4 @@
 [print #.-'    | '  '-'  ' |  '--' /         |  '--. |  | .-'    | |  | --' \n]
 [print #`-----'   `-----'  `------'          `-----' `--' `-----'  `--'\n]
 [print #\nsub-lisp 0.0.1 Copyright (C) 2023-2024 ggy.world SUDA\n]
+[new source '[kkkk]]
