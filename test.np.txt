@@ -4,6 +4,9 @@
 [load std_functions_handle extern_while while]
 [load std_functions_handle extern_input input]
 [load std_functions_handle extern_new new]
+[load std_functions_handle extern_let let]
+[load std_functions_handle extern_echo echo]
+
 [comment
     this is a simple sub-lisp interpreter.
 ]
@@ -13,4 +16,4 @@
 [print #.-'    | '  '-'  ' |  '--' /         |  '--. |  | .-'    | |  | --' \n]
 [print #`-----'   `-----'  `------'          `-----' `--' `-----'  `--'\n]
 [print #\nsub-lisp 0.0.1 Copyright (C) 2023-2024 ggy.world SUDA\n]
-[new source '[kkkk]]
+[echo '[[print #eee]]]

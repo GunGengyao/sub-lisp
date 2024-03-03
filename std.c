@@ -745,11 +745,34 @@ String* extern_les(Var** root, String* source){
     return str_let("");
 }
 String* extern_echo(Var** root, String* source){
-    return source;
+    unsigned long content_start = 0;
+    unsigned long content_end = 0;
+    unsigned long cursor = 0;
+    for(; str_get(source, cursor)==unicode(' '); cursor++);
+    // Skip'[
+    cursor+=2;
+    content_start = cursor;
+    int layer = 1;
+    while(layer!=0){
+        if(is_valid_open(source, cursor)==TRUE)layer++;
+        if(is_valid_close(source, cursor)==TRUE)layer--;
+        cursor++;
+    }
+    content_end = cursor-1;
+    String* ans = str_copy(source, content_start, content_end);
+    str_free(source);
+    return ans;
 }
-String* extern_input(Var** root, String* source){
-    String* input_string = str_let("");
 
+String* extern_input(Var** root, String* source){
+    String* ans = str_let("");
+    char cache[2];
+    cache[0]=0;
+    cache[1]=0;
+    while(cache[0]!='\n'){
+        cache[0] = getchar();
+        ans = str_append_char(ans, cache);
+    }
     str_free(source);
     return str_let("");
 }
@@ -787,7 +810,7 @@ String* extern_new(Var** root, String* source){
     Var* current_var = *root;
     while(!(current_var==VAR_TYPE_END
             ||current_var->type==VAR_TYPE_LAYER_BOUNDARY
-            || str_same(current_var->name, var_name)==TRUE)){
+            ||str_same(current_var->name, var_name)==TRUE)){
         current_var = current_var->next_node;
     }
     if(current_var==VAR_TYPE_END||current_var->type==VAR_TYPE_LAYER_BOUNDARY){
@@ -806,8 +829,48 @@ String* extern_new(Var** root, String* source){
     }
     return str_let("");
 }
+//
 String* extern_let(Var** root, String* source){
-    // TODO
-    str_free(source);
+    unsigned long cursor = 0;
+    unsigned long var_name_start = 0;
+    unsigned long var_name_end = 0;
+    unsigned long value_start = 0;
+    unsigned long value_end = 0;
+    for(; str_get(source, cursor)==unicode(' '); cursor++);
+    var_name_start = cursor;
+    for(; str_get(source, cursor)!=unicode(' '); cursor++);
+    var_name_end = cursor;
+    for(; str_get(source, cursor)==unicode(' '); cursor++);
+    cursor+=2;// skip '[
+    value_start = cursor;
+    int layer = 1;
+    while(layer!=0){
+        if(is_valid_open(source, cursor)==TRUE)layer++;
+        if(is_valid_close(source, cursor)==TRUE)layer--;
+        cursor++;
+    }
+    value_end = cursor-1;
+    // Here we have var_name_start var_name_end value_start value_end
+    String* name = str_copy(source, var_name_start, var_name_end);
+    String* value = str_copy(source, value_start, value_end);
+    Var* current_node = *root;
+    while(current_node!=VAR_TYPE_END){
+        if(str_same(current_node->name, name)==TRUE){
+            Var* rpls = var_init(name,
+                                 value,
+                                 VAR_TYPE_END,
+                                 VAR_TYPE_END,
+                                 VAR_TYPE_STRING);
+            var_free(var_replace_with(current_node, rpls));
+            str_free(source);
+            return str_let("");
+        }
+        current_node = current_node->next_node;
+    }
+    // Here current_node must be VAR_TYPE_END;
+    // Task: set a new var;
+    str_free(extern_new(root, source));
+    str_free(name);
+    str_free(value);
     return str_let("");
 }

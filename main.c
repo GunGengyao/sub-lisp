@@ -26,6 +26,11 @@ int main() {
     root = var_push(root, load_func);
     source = exec(&root, source);
     str_free(source);
-    var_free(root);
+    Var* freed_root = var_init(str_let("  "),
+                               root,
+                               VAR_TYPE_END,
+                               VAR_TYPE_END,
+                               VAR_TYPE_VAR_STACK);
+    var_free(freed_root);
     return 0;
 }

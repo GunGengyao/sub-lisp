@@ -104,6 +104,21 @@ String* str_let(char* input){
 char* str_2char_ptr(String* input){
     return (char*)input;
 }
+// This function will free target but not free with
+String* str_append_char(String* target, char* with){
+    unsigned long total_len = 0;
+    for(; with[total_len]!=0; total_len++);
+    total_len += str_len(target);
+    String* ans = (String*)malloc(sizeof(char)*(total_len+1));
+    unsigned long ans_cursor = 0;
+    unsigned long cursor = 0;
+    for(; target[cursor]!=0; cursor++, ans_cursor++)ans[ans_cursor] = target[cursor];
+    cursor=0;
+    for(; with[cursor]!=0; cursor++, ans_cursor++)ans[ans_cursor] = with[cursor];
+    ans[ans_cursor] = 0;
+    str_free(target);
+    return ans;
+}
 // function_name will be freed
 Func _match_function(Var* root, String* function_name) {
     Var current_var = *root;
