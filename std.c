@@ -519,7 +519,7 @@ String* extern_equal(Var** root, String* source){
     str_free(source);
     return str_let("");
 }
-// This handle >= operator.
+// >= operator.
 String* extern_ge(Var** root, String* source){
     unsigned long cursor=0;
     short is_input_a_double = 0;
@@ -576,6 +576,7 @@ String* extern_ge(Var** root, String* source){
     free(char_source);
     return str_let("");
 }
+// <= operator
 String* extern_le(Var** root, String* source){
     unsigned long cursor=0;
     short is_input_a_double = 0;
@@ -632,6 +633,7 @@ String* extern_le(Var** root, String* source){
     str_free(source);
     return str_let("");
 }
+// > operator
 String* extern_lar(Var** root, String* source){
     unsigned long cursor=0;
     short is_input_a_double = 0;
@@ -688,6 +690,7 @@ String* extern_lar(Var** root, String* source){
     str_free(source);
     return str_let("");
 }
+// < operator
 String* extern_les(Var** root, String* source){
     unsigned long cursor=0;
     short is_input_a_double = 0;
@@ -744,12 +747,13 @@ String* extern_les(Var** root, String* source){
     str_free(source);
     return str_let("");
 }
+// == operator
 String* extern_echo(Var** root, String* source){
     unsigned long content_start = 0;
     unsigned long content_end = 0;
     unsigned long cursor = 0;
     for(; str_get(source, cursor)==unicode(' '); cursor++);
-    // Skip'[
+    // Skip '[
     cursor+=2;
     content_start = cursor;
     int layer = 1;
@@ -763,7 +767,6 @@ String* extern_echo(Var** root, String* source){
     str_free(source);
     return ans;
 }
-
 String* extern_input(Var** root, String* source){
     String* ans = str_let("");
     char cache[2];
@@ -774,7 +777,7 @@ String* extern_input(Var** root, String* source){
         ans = str_append_char(ans, cache);
     }
     str_free(source);
-    return str_let("");
+    return ans;
 }
 // This function will set and assign a new var(string) or assign an existed var(string).
 String* extern_new(Var** root, String* source){

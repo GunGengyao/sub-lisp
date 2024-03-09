@@ -48,7 +48,7 @@ String* str_replace(String* target, unsigned long from, unsigned long to, String
     return (String*)ans;
 }
 String* str_copy(String* target, unsigned long from, unsigned long to){
-    if (from==to) {  // This will copy all string.
+    if (from>to) {  // This will copy all string.
         unsigned long target_len = str_len(target);
         char* ans = (char*)malloc(sizeof(char)*(target_len+1));
         unsigned long cursor = 0;
@@ -57,7 +57,7 @@ String* str_copy(String* target, unsigned long from, unsigned long to){
         }
         ans[cursor]=0;
         return ans;
-    }
+    }//else
     unsigned long target_len = str_len(target);
     char* ans = (char*)malloc(sizeof(char)*(target_len+1));
     unsigned long tar_cursor = from;
@@ -129,6 +129,9 @@ Func _match_function(Var* root, String* function_name) {
             }
         current_var = *current_var.next_node;
     }
+    // Here means can't find function name in the root.
+    printf("exec: ERROR, _match_function can't find such function name in root.\n");
+    return NULL;    // TODO: Here need some progress.
 }
 
 int is_valid_open(String* source, unsigned long where){
@@ -214,6 +217,11 @@ void var_free(Var* input){
     free(input);
     return;
 }
+Var* var_replace_with(Var* replaced, Var* with){
+    // TODO
+    return replaced;
+}
+
 
 // ---------------------------------------------------------------- here the all function should have standard form ---- {
 // This function will free source and alloc new space as return
@@ -270,6 +278,7 @@ String* exec(Var** root, String* source){
     Func function_ptr = _match_function(*root, name_tmp);
     String* ans = function_ptr(root, str_copy(source, function_body_start, function_body_end));
     str_free(source);  // source freed here.
+    str_free(name_tmp);
     return ans;
 }
 //-------------------------------------------------------------- here the function should all have standard form ---- }

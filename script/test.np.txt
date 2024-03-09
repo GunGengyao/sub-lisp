@@ -2,10 +2,22 @@
 [load std_functions_handle extern_comment comment]
 [load std_functions_handle extern_if if]
 [load std_functions_handle extern_while while]
+[load std_functions_handle extern_add add]
+[load std_functions_handle extern_sub sub]
+[load std_functions_handle extern_mul mul]
+[load std_functions_handle extern_div div]
+[load std_functions_handle extern_and $]
+[load std_functions_handle extern_or |]
+[load std_functions_handle extern_not !]
+[load std_functions_handle extern_equal ==]
+[load std_functions_handle extern_ge >=]
+[load std_functions_handle extern_le <=]
+[load std_functions_handle extern_lar >]
+[load std_functions_handle extern_les <]
+[load std_functions_handle extern_echo echo]
 [load std_functions_handle extern_input input]
 [load std_functions_handle extern_new new]
 [load std_functions_handle extern_let let]
-[load std_functions_handle extern_echo echo]
 
 [comment
     this is a simple sub-lisp interpreter.
@@ -16,4 +28,7 @@
 [print #.-'    | '  '-'  ' |  '--' /         |  '--. |  | .-'    | |  | --' \n]
 [print #`-----'   `-----'  `------'          `-----' `--' `-----'  `--'\n]
 [print #\nsub-lisp 0.0.1 Copyright (C) 2023-2024 ggy.world SUDA\n]
-[echo '[[print #eee]]]
+[new source '[]]
+[new ans '[]]
+
+
